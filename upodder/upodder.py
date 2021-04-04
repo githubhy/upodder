@@ -15,6 +15,7 @@ import shutil # To get around "cross-device" rename error when moving to dest. d
 from datetime import datetime as dt
 from sqlobject import SQLObject, sqlite, DateTimeCol, UnicodeCol
 from tqdm import tqdm
+import yaml
 
 # python2 compat
 try: input = raw_input
@@ -42,7 +43,7 @@ YES = [1,"1","on","yes","Yes","YES","y","Y","true","True","TRUE","t","T"]
 CONFIGCOMMENT = ['#',';','$',':','"',"'"]
 BADFNCHARS = re.compile(r'[^\w]+')
 TEMPDIR = '/tmp/upodder'
-FILENAME = '{entry_title}.{filename_extension}'
+FILENAME = '{feed_title}/{entry_title}.{filename_extension}'
 
 # Initializing logging
 if args.quiet:
@@ -72,7 +73,7 @@ class SeenEntry(SQLObject):
 
 class EntryProcessor(object):
     "Processes single feed entry"
-    def __init__(self, entry, feed):
+    def __init__(self, entry, feed, cfg):
         self.hashed = hashlib.sha1(entry['title'].encode('ascii', 'ignore')).hexdigest()
         self.pub_date = dt.fromtimestamp(time.mktime(entry.published_parsed))
 
@@ -98,11 +99,11 @@ class EntryProcessor(object):
             # copy enclosure.type to entry.type for generate_filename processing.
             entry['type'] = enclosure.get('type')
             
-            if self._download_enclosure(enclosure, entry, feed, args.no_download):
+            if self._download_enclosure(enclosure, entry, feed, cfg, args.no_download):
                 SeenEntry( pub_date=self.pub_date, hashed=self.hashed)
             break
 
-    def _download_enclosure(self, enclosure, entry, feed, no_download=False):
+    def _download_enclosure(self, enclosure, entry, feed, cfg, no_download=False):
         """Performs downloading of specified file. Returns True on success and False in other case"""
 
         downloadto = TEMPDIR + os.sep + self.hashed
@@ -117,7 +118,7 @@ class EntryProcessor(object):
                 os.makedirs(os.path.dirname(downloadto))
 
             l.debug("Downloading %s from %s" % (entry['title'], enclosure['href']))
-            r = requests.get(enclosure['href'], stream=True, timeout=25)
+            r = requests.get(enclosure['href'], stream=True, timeout=25, proxies=cfg.get('proxy', {}))
 
             with open(downloadto, 'wb') as f:
                 if 'content-length' in r.headers:
@@ -174,7 +175,8 @@ class EntryProcessor(object):
         }
         return FILENAME.format(**subst)
 
-def process_feed(url):
+def process_feed(cfg):
+    url = cfg['url']
     l.info('Downloading feed: %s' % url)
     feed = feedparser.parse(url)
 
@@ -193,7 +195,7 @@ def process_feed(url):
     
     feed.entries.reverse()
     for entry in feed.entries:
-        EntryProcessor(entry, feed)
+        EntryProcessor(entry, feed, cfg)
 
 def import_opml(subscriptions, opml):
     """Import a list of subscriptions from an OPML file."""
@@ -231,12 +233,19 @@ def init():
     SeenEntry._connection = sqlite.builder()(expanduser(args.basedir + os.sep + 'seen.sqlite'), debug=False)
     SeenEntry.createTable(ifNotExists=True)
 
+
 def main():
     init()
 
-    for url in map(lambda x: x.strip(), open(expanduser(args.basedir) + os.sep + 'subscriptions')):
-        if url and url[0] not in CONFIGCOMMENT:
-            process_feed(url)
+    """
+        for url in map(lambda x: x.strip(), open(expanduser(args.basedir) + os.sep + 'subscriptions')):
+            if url and url[0] not in CONFIGCOMMENT:
+                process_feed(url)
+    """
+    with open(expanduser(args.basedir) + os.sep + 'subscriptions.yaml', 'r') as stream:
+        data = yaml.load(stream)
+        for feed_cfg in data['subscriptions']:
+            process_feed(feed_cfg)
     
     l.info('Done updating feeds.')
 

@@ -6,6 +6,7 @@ from upodder import upodder
 BASEDIR = '/tmp/upodder_testing'
 
 class TestUpodder(unittest.TestCase):
+    """
     feeds = [
                 "https://www.relay.fm/clockwise/feed",
                 "http://popupchinese.com/feeds/custom/sinica",
@@ -23,7 +24,25 @@ class TestUpodder(unittest.TestCase):
                 "http://podcastfeeds.nbcnews.com/audio/podcast/MSNBC-MADDOW-NETCAST-M4V.xml",
                 "http://feeds.feedburner.com/uhhyeahdude/podcast",
             ]
-
+    """
+    feeds = [
+        {"url": "https://www.relay.fm/clockwise/feed"},
+        {"url": "http://popupchinese.com/feeds/custom/sinica"},
+        {"url": "http://www.radiolab.org/feeds/podcast/"},
+        {"url": "http://99percentinvisible.org/feed/"},
+        {"url": "http://chaosradio.ccc.de/chaosradio-latest.rss"},
+        {"url": "http://djfm.ca/?feed=rss2"},
+        {"url": "http://feeds.feedburner.com/Sebastien-bHouseFromIbiza/"},
+        {"url": "http://alternativlos.org/ogg.rss"},
+        {"url": "http://www.sovereignman.com/feed/"},
+        {"url": "http://neusprech.org/feed/"},
+        {"url": "http://www.davidbarrkirtley.com/podcast/geeksguideshow.xml"},
+        {"url": "http://www.cbc.ca/cmlink/1.2919550"},
+        {"url": "http://feeds.feedburner.com/binaergewitter-podcast-opus"},
+        {"url": "http://podcastfeeds.nbcnews.com/audio/podcast/MSNBC-MADDOW-NETCAST-M4V.xml"},
+        {"url": "http://feeds.feedburner.com/uhhyeahdude/podcast"},
+    ]
+    
     def setUp(self):
         upodder.args.no_download = True
         upodder.args.mark_seen = False
