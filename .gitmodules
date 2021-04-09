@@ -1,0 +1,3 @@
+[submodule "trojan"]
+	path = trojan
+	url = https://github.com/trojan-gfw/trojan.git

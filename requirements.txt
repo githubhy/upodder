@@ -1,5 +1,8 @@
 clint
 requests
+requests[socks]
 feedparser
 sqlobject
 tqdm
+listparser
+pyyaml

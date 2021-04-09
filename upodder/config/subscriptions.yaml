@@ -1,0 +1,16 @@
+---
+configurations:
+  proxy_local: &p
+    http: socks5h://127.0.0.1:1080
+    https: socks5h://127.0.0.1:1080
+
+# Add your RSS/ATOM subscriptions here.
+subscriptions:
+  - url: https://feeds.npr.org/500005/podcast.xml
+  - url: https://www.omnycontent.com/d/playlist/aaea4e69-af51-495e-afc9-a9760146922b/09524ad3-9a20-4a7a-9316-aadc0009ee0c/d93e7b31-7ec4-454e-b940-aadc0009ee15/podcast.rss
+    proxy: *p
+  - url: https://www.omnycontent.com/d/playlist/aaea4e69-af51-495e-afc9-a9760146922b/0a686f81-0eeb-455b-98be-ab0d00055d5e/1fab2b0b-a7f0-4d71-bf6d-ab0d00055d6c/podcast.rss
+    proxy: *p
+  - url: https://feeds.pacific-content.com/choiceology
+    proxy: *p
+  - url: https://feeds.buzzsprout.com/136050.rss

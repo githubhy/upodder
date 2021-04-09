@@ -47,7 +47,7 @@ FILENAME = '{feed_title}/{entry_title}.{filename_extension}'
 
 # Initializing logging
 if args.quiet:
-    l = logging.Logger('upodder', logging.ERROR)
+    l = logging.Logger('upodder', logging.INFO)
 else:
     l = logging.Logger('upodder', logging.DEBUG)
 stderrHandler = logging.StreamHandler()
@@ -117,7 +117,7 @@ class EntryProcessor(object):
             if not os.path.exists(os.path.dirname(downloadto)):
                 os.makedirs(os.path.dirname(downloadto))
 
-            l.debug("Downloading %s from %s" % (entry['title'], enclosure['href']))
+            l.info("Downloading %s from %s" % (entry['title'], enclosure['href']))
             r = requests.get(enclosure['href'], stream=True, timeout=25, proxies=cfg.get('proxy', {}))
 
             with open(downloadto, 'wb') as f:
@@ -126,7 +126,8 @@ class EntryProcessor(object):
                     with tqdm(total=total_length, 
                               unit="B", 
                               unit_scale=True,
-                              ncols=90) as pbar:
+                              ncols=90,
+                              disable=args.quiet) as pbar:
                         for chunk in r.iter_content(1024):
                             f.write(chunk)
                             if chunk:
@@ -155,7 +156,7 @@ class EntryProcessor(object):
 
         # Move downloaded file to its final destination
         moveto = expanduser(args.podcastdir) + os.sep + self._generate_filename(entry, feed)
-        l.debug("Moving {%s} to {%s}"%(downloadto,moveto))
+        l.info("Moving {%s} to {%s}"%(downloadto,moveto))
         if not os.path.exists(os.path.dirname(moveto)): os.makedirs(os.path.dirname(moveto))
         shutil.move(downloadto, moveto)
         return True
@@ -177,7 +178,7 @@ class EntryProcessor(object):
 
 def process_feed(cfg):
     url = cfg['url']
-    l.info('Downloading feed: %s' % url)
+    l.debug('Downloading feed: %s' % url)
     feed = feedparser.parse(url)
 
     # Not all bozo errors cause total failure
@@ -237,13 +238,17 @@ def init():
 def main():
     init()
 
+    l.info("[upodder] Start at %s" % dt.now().strftime("%Y-%m-%d %H:%M:%S"))
+
     """
         for url in map(lambda x: x.strip(), open(expanduser(args.basedir) + os.sep + 'subscriptions')):
             if url and url[0] not in CONFIGCOMMENT:
                 process_feed(url)
     """
     with open(expanduser(args.basedir) + os.sep + 'subscriptions.yaml', 'r') as stream:
-        data = yaml.load(stream)
+        data = yaml.load(stream, Loader=yaml.FullLoader)
+        if 'podcast_dir' in data['configurations']:
+            args.podcastdir = data['configurations']['podcast_dir']
         for feed_cfg in data['subscriptions']:
             process_feed(feed_cfg)
     

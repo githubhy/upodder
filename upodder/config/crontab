@@ -1,0 +1,1 @@
+*/59 * * * * /app/upodder/upodder.py --basedir=/config --podcastdir=/data --quiet >> /data/uppoder.cron.log 2>&1
