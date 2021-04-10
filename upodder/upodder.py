@@ -1,46 +1,50 @@
 #!/usr/bin/env python
 from __future__ import print_function
+
+import argparse
+import hashlib
+import logging
+import os
+import re
+import shutil  # To get around "cross-device" rename error when moving to dest. dir.
+import sys
+import time
+from datetime import datetime as dt
+from os.path import expanduser
+
 import feedparser
 import listparser
-import time
-import hashlib
-import os
-import sys
-from os.path import expanduser
-import logging
-import re
 import requests
-import argparse
-import shutil # To get around "cross-device" rename error when moving to dest. dir.
-from datetime import datetime as dt
+import yaml
 from sqlobject import SQLObject, sqlite, DateTimeCol, UnicodeCol
 from tqdm import tqdm
-import yaml
 
 # python2 compat
-try: input = raw_input
-except NameError: pass
+try:
+    input = raw_input
+except NameError:
+    pass
 
 # TODO expanduser as action? https://gist.github.com/brantfaircloth/1252339
 parser = argparse.ArgumentParser(description='Download podcasts via the command line.')
 parser.add_argument('--no-download', action='store_true',
-                   help="Don't download any files. Just mark as read.")
-parser.add_argument('--podcastdir', '-p', default='~/Downloads/podcasts', 
-    help="Folder to download podcast files to.")
-parser.add_argument('--basedir', '-b', default='~/.upodder', 
-    help="Folder to store subscriptions and seen database.")
-parser.add_argument('--oldness', '-o', default=30, type=int,
-    help="Skip entries older than X days.")
+                    help="Don't download any files. Just mark as read.")
+parser.add_argument('--podcastdir', '-p', default='~/Downloads/podcasts',
+                    help="Folder to download podcast files to.")
+parser.add_argument('--basedir', '-b', default='~/.upodder',
+                    help="Folder to store subscriptions and seen database.")
+parser.add_argument('--oldness', '-o', default=7, type=int,
+                    help="Skip entries older than X days.")
 parser.add_argument('--mark-seen', action='store_true',
-    help="Just mark all entries as seen and exit.")
+                    help="Just mark all entries as seen and exit.")
 parser.add_argument('--import-opml', '-i', dest='opmlpath',
-    help='Import feeds from an OPML file.')
+                    help='Import feeds from an OPML file.')
 parser.add_argument("--quiet", help="Only output errors.",
                     action="store_true")
 args = parser.parse_args()
 
-YES = [1,"1","on","yes","Yes","YES","y","Y","true","True","TRUE","t","T"]
-CONFIGCOMMENT = ['#',';','$',':','"',"'"]
+YES = [1, "1", "on", "yes", "Yes", "YES", "y", "Y", "true", "True", "TRUE", "t", "T"]
+CONFIGCOMMENT = ['#', ';', '$', ':', '"', "'"]
 BADFNCHARS = re.compile(r'[^\w]+')
 TEMPDIR = '/tmp/upodder'
 FILENAME = '{feed_title}/{entry_title}.{filename_extension}'
@@ -64,43 +68,49 @@ FILE_TYPES = {
     'audio/aac': 'aac',
     'audio/mp4': 'm4a',
     'audio/mp3': 'mp3'
-    }
+}
+
 
 class SeenEntry(SQLObject):
-    "Represents a single feed item, seen before. Used to keep track of download status."
+    """
+    Represents a single feed item, seen before. Used to keep track of download status.
+    """
     hashed = UnicodeCol()
     pub_date = DateTimeCol()
 
+
 class EntryProcessor(object):
-    "Processes single feed entry"
+    """
+    Processes single feed entry
+    """
     def __init__(self, entry, feed, cfg):
         self.hashed = hashlib.sha1(entry['title'].encode('ascii', 'ignore')).hexdigest()
         self.pub_date = dt.fromtimestamp(time.mktime(entry.published_parsed))
 
         if args.mark_seen:
             SeenEntry(pub_date=self.pub_date, hashed=self.hashed)
-            l.debug("Marking as seen: %s"%(entry['title']))
+            l.debug("Marking as seen: %s" % (entry['title']))
             return
 
         # Let's check if we worked on this entry earlier...
         if SeenEntry.select(SeenEntry.q.hashed == self.hashed).count() > 0:
-            l.debug("Already seen: %s"%(entry['title']))
+            l.debug("Already seen: %s" % (entry['title']))
             return
-        
+
         # Let's check the entry's date
-        if (dt.now() - self.pub_date).days > args.oldness:
-            l.debug("Too old for us: %s"%entry['title'])
+        if (dt.now() - self.pub_date).days > cfg.get('days', args.oldness):
+            l.debug("Too old for us: %s" % entry['title'])
             return
 
         # Search for mpeg enclosures
-        for enclosure in filter(lambda x: x.get('type') in FILE_TYPES.keys() ,entry.get('enclosures',[])):
+        for enclosure in filter(lambda x: x.get('type') in FILE_TYPES.keys(), entry.get('enclosures', [])):
             # Work only with first found audio/mpeg or video/x-m4v enclosure (Bad Thing? maybe :( )
 
             # copy enclosure.type to entry.type for generate_filename processing.
             entry['type'] = enclosure.get('type')
-            
+
             if self._download_enclosure(enclosure, entry, feed, cfg, args.no_download):
-                SeenEntry( pub_date=self.pub_date, hashed=self.hashed)
+                SeenEntry(pub_date=self.pub_date, hashed=self.hashed)
             break
 
     def _download_enclosure(self, enclosure, entry, feed, cfg, no_download=False):
@@ -123,8 +133,8 @@ class EntryProcessor(object):
             with open(downloadto, 'wb') as f:
                 if 'content-length' in r.headers:
                     total_length = int(r.headers['content-length'])
-                    with tqdm(total=total_length, 
-                              unit="B", 
+                    with tqdm(total=total_length,
+                              unit="B",
                               unit_scale=True,
                               ncols=90,
                               disable=args.quiet) as pbar:
@@ -156,7 +166,7 @@ class EntryProcessor(object):
 
         # Move downloaded file to its final destination
         moveto = expanduser(args.podcastdir) + os.sep + self._generate_filename(entry, feed)
-        l.info("Moving {%s} to {%s}"%(downloadto,moveto))
+        l.info("Moving {%s} to {%s}" % (downloadto, moveto))
         if not os.path.exists(os.path.dirname(moveto)): os.makedirs(os.path.dirname(moveto))
         shutil.move(downloadto, moveto)
         return True
@@ -164,17 +174,18 @@ class EntryProcessor(object):
     def _generate_filename(self, entry, feed):
         """Generates file name for this enclosure based on config settins
            Added filename_extension dict mapping to handle different file types."""
-        (year,month,day,hour,minute,second,weekday,yearday,leap) = time.localtime()
+        (year, month, day, hour, minute, second, weekday, yearday, leap) = time.localtime()
         subst = {
-            'today': '%i-%02i-%02i'%(year,month,day),
+            'today': '%i-%02i-%02i' % (year, month, day),
             'entry_date': self.pub_date.date().isoformat(),
             'id': self.hashed,
-            'entry_title': re.sub(BADFNCHARS,'_',entry.get('title')),
-            'feed_href': re.sub(BADFNCHARS,'_',feed.href.split('://')[-1]),
-            'feed_title': re.sub(BADFNCHARS,'_',feed.feed.get('title',feed.href)),
+            'entry_title': re.sub(BADFNCHARS, '_', entry.get('title')),
+            'feed_href': re.sub(BADFNCHARS, '_', feed.href.split('://')[-1]),
+            'feed_title': re.sub(BADFNCHARS, '_', feed.feed.get('title', feed.href)),
             'filename_extension': FILE_TYPES.get(entry.get('type')),
         }
         return FILENAME.format(**subst)
+
 
 def process_feed(cfg):
     url = cfg['url']
@@ -182,9 +193,9 @@ def process_feed(cfg):
     feed = feedparser.parse(url)
 
     # Not all bozo errors cause total failure
-    if feed.bozo and isinstance(feed.bozo_exception, 
+    if feed.bozo and isinstance(feed.bozo_exception,
                                 (type(feedparser.NonXMLContentType), type(feedparser.CharacterEncodingOverride))):
-        l.error("Erroneous feed URL: %s (%s)"%(url, type(feed.bozo_exception)))
+        l.error("Erroneous feed URL: %s (%s)" % (url, type(feed.bozo_exception)))
         return
 
     # When parsing a website or error message, title is missing.
@@ -192,11 +203,12 @@ def process_feed(cfg):
         l.error("Erroneous feed URL: %s" % url)
         return
 
-    l.info("Parsing feed: %s"%feed.feed.title)
-    
+    l.info("Parsing feed: %s" % feed.feed.title)
+
     feed.entries.reverse()
     for entry in feed.entries:
         EntryProcessor(entry, feed, cfg)
+
 
 def import_opml(subscriptions, opml):
     """Import a list of subscriptions from an OPML file."""
@@ -218,15 +230,16 @@ def import_opml(subscriptions, opml):
                 f.write(feed.url + "\n")
     sys.exit()
 
+
 def init():
     if not os.path.exists(expanduser(args.basedir)):
-        l.info("Creating base dir %s"%args.basedir)
+        l.info("Creating base dir %s" % args.basedir)
         os.makedirs(expanduser(args.basedir))
 
     subscriptions = expanduser(args.basedir) + os.sep + 'subscriptions'
     if not os.path.exists(subscriptions):
-        l.info("Creating empty subscriptions file %s"%subscriptions)
-        open(subscriptions,'a').write("# Add your RSS/ATOM subscriptions here.\n\n")
+        l.info("Creating empty subscriptions file %s" % subscriptions)
+        open(subscriptions, 'a').write("# Add your RSS/ATOM subscriptions here.\n\n")
 
     if args.opmlpath:
         import_opml(subscriptions, args.opmlpath)
@@ -251,10 +264,9 @@ def main():
             args.podcastdir = data['configurations']['podcast_dir']
         for feed_cfg in data['subscriptions']:
             process_feed(feed_cfg)
-    
+
     l.info('Done updating feeds.')
 
 
 if __name__ == '__main__':
     main()
-
