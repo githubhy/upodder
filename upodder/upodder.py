@@ -65,6 +65,7 @@ FILE_TYPES = {
     'audio/mpeg': 'mp3',
     'audio/x-m4a': 'm4a',
     'video/x-m4v': 'm4v',
+    'video/quicktime': 'mov',
     'audio/x-opus': 'opus',
     'audio/x-ogg': 'ogg',
     'audio/aac': 'aac',

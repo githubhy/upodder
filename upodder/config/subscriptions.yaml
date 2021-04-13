@@ -1,6 +1,10 @@
 ---
 configurations:
   proxy_local: &p
+#    feed: socks5://127.0.0.1:7891
+    http: socks5h://127.0.0.1:7891
+    https: socks5h://127.0.0.1:7891
+  proxy_all: &p_all
     feed: socks5://127.0.0.1:7891
     http: socks5h://127.0.0.1:7891
     https: socks5h://127.0.0.1:7891
@@ -17,8 +21,8 @@ subscriptions:
   - url: https://feeds.pacific-content.com/choiceology
     proxy: *p
   - url: https://feeds.megaphone.fm/VMP9176219298
-    proxy: *p
+    proxy: *p_all
+  - url: https://podcastfeeds.nbcnews.com/nbcnews/video/podcast/MSNBC-MADDOW-NETCAST-M4V.xml
+    proxy: *p_all
   - url: https://feeds.buzzsprout.com/136050.rss # Speak English with Tiffany
-    days: *days_all
-  - url: https://feeds.buzzsprout.com/1492420.rss # Dinosaur George Kids
     days: *days_all
