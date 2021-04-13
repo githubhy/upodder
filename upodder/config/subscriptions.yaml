@@ -1,8 +1,9 @@
 ---
 configurations:
   proxy_local: &p
-    http: socks5h://127.0.0.1:1080
-    https: socks5h://127.0.0.1:1080
+    feed: socks5://127.0.0.1:7891
+    http: socks5h://127.0.0.1:7891
+    https: socks5h://127.0.0.1:7891
   days_all: &days_all
     36500
 

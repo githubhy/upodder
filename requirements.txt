@@ -6,3 +6,4 @@ sqlobject
 tqdm
 listparser
 pyyaml
+pysocks

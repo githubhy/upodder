@@ -18,6 +18,8 @@ import requests
 import yaml
 from sqlobject import SQLObject, sqlite, DateTimeCol, UnicodeCol
 from tqdm import tqdm
+import socks
+from sockshandler import SocksiPyHandler
 
 # python2 compat
 try:
@@ -128,7 +130,7 @@ class EntryProcessor(object):
                 os.makedirs(os.path.dirname(downloadto))
 
             l.info("Downloading %s from %s" % (entry['title'], enclosure['href']))
-            r = requests.get(enclosure['href'], stream=True, timeout=25, proxies=cfg.get('proxy', {}))
+            r = requests.get(enclosure['href'], stream=True, timeout=60, proxies=cfg.get('proxy', {}))
 
             with open(downloadto, 'wb') as f:
                 if 'content-length' in r.headers:
@@ -187,10 +189,22 @@ class EntryProcessor(object):
         return FILENAME.format(**subst)
 
 
+def build_urllib2_proxy_handler(url):
+    handler = None
+    if url:
+        m = re.match(r'^(?P<type>\w+)://(?P<ip>\d+\.\d+\.\d+\.\d+)(:(?P<port>\d+))?', url)
+        if m and m.group('type').startswith('socks5'):
+            handler = SocksiPyHandler(socks.SOCKS5, m.group('ip'), int(m.group('port')) if m.group('port') else 1080)
+    return handler
+
+
 def process_feed(cfg):
     url = cfg['url']
-    l.debug('Downloading feed: %s' % url)
-    feed = feedparser.parse(url)
+    l.info('Downloading feed: %s' % url)
+    proxy_handler = build_urllib2_proxy_handler(cfg.get('proxy', {}).get('feed'))
+    handlers = [proxy_handler] if proxy_handler else []
+    feed = feedparser.parse(url, handlers=handlers)
+    l.info('Feed: %s downloaded' % url)
 
     # Not all bozo errors cause total failure
     if feed.bozo and isinstance(feed.bozo_exception,

@@ -24,5 +24,5 @@ COPY . .
 RUN rm -rf trojan
 #COPY ./proxy/trojan /usr/local/bin
 #COPY --from=proxy /usr/local/bin/trojan /usr/local/bin
-
+ENV TZ Asia/Shanghai
 CMD [ "sh", "upodder/config/init.sh"]
