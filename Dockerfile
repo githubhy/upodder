@@ -1,7 +1,7 @@
 FROM python:alpine
 
 COPY trojan trojan
-RUN apk add --no-cache --virtual .build-deps \
+RUN apk add --no-cache --virtual .build-deps-for-trojan \
         build-base \
         cmake \
         boost-dev \
@@ -10,7 +10,7 @@ RUN apk add --no-cache --virtual .build-deps \
     && (cd trojan && cmake . && make -j $(nproc) && strip -s trojan \
     && mv trojan /usr/local/bin) \
     && rm -rf trojan \
-    && apk del .build-deps \
+    && apk del .build-deps-for-trojan \
     && apk add --no-cache --virtual .trojan-rundeps \
         libstdc++ \
         boost-system \
@@ -19,7 +19,15 @@ RUN apk add --no-cache --virtual .build-deps \
 
 WORKDIR /app
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN apk add --no-cache --virtual .build-deps-for-cryptography \
+        gcc \
+        musl-dev \
+        python3-dev \
+        libffi-dev \
+        openssl-dev \
+        cargo \
+    && pip install --no-cache-dir -r requirements.txt \
+    && apk del .build-deps-for-cryptography
 COPY . .
 RUN rm -rf trojan
 #COPY ./proxy/trojan /usr/local/bin

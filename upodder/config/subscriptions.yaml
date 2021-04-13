@@ -16,6 +16,8 @@ subscriptions:
 #    proxy: *p
   - url: https://feeds.pacific-content.com/choiceology
     proxy: *p
+  - url: https://feeds.megaphone.fm/VMP9176219298
+    proxy: *p
   - url: https://feeds.buzzsprout.com/136050.rss # Speak English with Tiffany
     days: *days_all
   - url: https://feeds.buzzsprout.com/1492420.rss # Dinosaur George Kids

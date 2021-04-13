@@ -1,6 +1,7 @@
 clint
 requests
 requests[socks]
+requests[security]
 feedparser
 sqlobject
 tqdm
