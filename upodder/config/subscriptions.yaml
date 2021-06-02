@@ -3,7 +3,7 @@ configurations:
   proxy_local: &p
 #    feed: socks5://127.0.0.1:7891
     http: socks5h://127.0.0.1:7891
-    https: socks5h://127.0.0.1:7891
+    https: socks5h://127.0.0.1:1080
   proxy_all: &p_all
     feed: socks5://127.0.0.1:7891
     http: socks5h://127.0.0.1:7891

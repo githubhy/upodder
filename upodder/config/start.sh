@@ -12,6 +12,17 @@ CRONTAB_FILE="/tmp/crontab"
 TROJAN_LOG_FILE="/data/trojan.log"
 UPODDER_LOG_FILE="/data/uppoder.cron.log"
 
+# Handle exceptions
+safe_exit() {
+    echo "## Caught SIGTERM/SIGINT; Clean up and Exit" >> ${UPODDER_LOG_FILE}
+    kill -SIGTERM "$child"
+    wait "$child"
+    #rm ENV_FILE CRON_JOB_FILE CRONTAB_FILE
+    exit $?
+}
+trap safe_exit SIGTERM
+trap safe_exit SIGINT
+
 # Start trojan client
 [ -e ${TROJAN_CONFIG_FILE} ] && trojan ${TROJAN_CONFIG_FILE} >> ${TROJAN_LOG_FILE} 2>&1 &
 
@@ -23,4 +34,6 @@ chmod +x ${CRON_JOB_FILE}
 echo "*/30 * * * * /usr/bin/flock -n /tmp/fcj.lockfile ${CRON_JOB_FILE}" > ${CRONTAB_FILE}
 cat ${CRONTAB_FILE} >> ${UPODDER_LOG_FILE}
 crontab ${CRONTAB_FILE}
-crond -f
+crond -f &
+child="$!"
+wait "$child"
